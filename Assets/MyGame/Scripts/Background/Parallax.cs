@@ -8,7 +8,8 @@ using static UnityEngine.GraphicsBuffer;
 public class Parallax : MonoBehaviour
 {
     public Transform player;
-    public bool lockYParallax = true;
+    public bool startLockYParallax = true;
+    [HideInInspector] public bool lockYParallax = true;
     public bool autoParallax = true;
     public float adjustAutoY = 1;
     [ConditionalHide("autoParallax", true)]
@@ -35,10 +36,12 @@ public class Parallax : MonoBehaviour
         startZ = transform.position.z;
         initialYDiff = transform.position.y - cam.transform.position.y;
 
+        #region Calculate parallax auto
         float visibleRangeInFrontPlayer = Mathf.Abs(cam.transform.position.z - player.position.z - cam.nearClipPlane);
         float visibleRangeBehindPlayer = cam.farClipPlane - visibleRangeInFrontPlayer;
         float fromLayerToPlayer = transform.position.z - player.position.z;
         float autoFactor = fromLayerToPlayer > 0 ? (fromLayerToPlayer / visibleRangeBehindPlayer) : (fromLayerToPlayer / visibleRangeInFrontPlayer);
+        #endregion
 
         if (autoParallax)
         {
@@ -60,6 +63,14 @@ public class Parallax : MonoBehaviour
     {
         transform.position += new Vector3(travel.x * parallaxFactor.x, travel.y * parallaxFactor.y);
         lastCamPos = cam.transform.position;
+
+        // Everytime startLockYParallax turns to True, the distance of layer and cam will be calculated 
+        if (startLockYParallax)
+        {
+            startLockYParallax = false;
+            lockYParallax = true;
+            initialYDiff = transform.position.y - cam.transform.position.y;
+        }
 
         if (lockYParallax)
         {

@@ -5,6 +5,8 @@ TagManager:
   serializedVersion: 2
   tags:
   - Crystal
+  - NormalItem
+  - OnAirPlatform
   layers:
   - Default
   - TransparentFX
@@ -14,7 +16,7 @@ TagManager:
   - UI
   - Ground
   - 
-  - 
+  - NormalItem
   - 
   - 
   - 
