@@ -21,29 +21,32 @@ public class PlayerController : MonoBehaviour
     private bool wasGrounded = true;
 
     [SerializeField] private float moveSpeed;
-    private float runningSpeedModifier = 2f;
+    private float walkingSpeedModifier = 0.5f;
     private float horizontal;
     public float Horizontal { get => horizontal; }
     static private bool isFacingRight = true;
-    private bool isRunning = false;
+    private bool isWalking = false;
 
     [SerializeField] private float jumpForce;
+    [SerializeField] private float holdJumpForce;
     private bool isJumping = false;
     private bool fell = false; // This variable makes character run the Landing animation only if it fell
-
     private bool ableToMultipleJump = true;
     private bool isMultipleJumping = false;
-    private int initialNumOfJumps = 1; // Dont count first jump
+    private int additionalNumOfJumps = 1; // Dont count first jump
     private int avaiableJumps;
-    private float jumpForceModifier = 64;
-    private float delayTimeForCoyoteJump = 0.3f;
+    private float multipleJumpForce = 5.6f;
+    private float delayTimeForCoyoteJump = 0.2f;
     private bool ableToCoyoteJump = false;
     private bool isCoyoteJumping = false;
+    private bool isUp = false;
+    [SerializeField] private float maxUpTime;
+    private float currentUpTime;
     [SerializeField] private GameObject jumpEffectPrefab;
     [SerializeField] private GameObject doubleJumpEffectPrefab;
 
     private bool isCrouching;
-    private float crouchingSpeedModifier = 0.5f;
+    private float crouchingSpeedModifier = 0.25f;
 
     private bool isCastingSpell = false;
     #endregion
@@ -54,7 +57,7 @@ public class PlayerController : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         spriteCharacter = GetComponentInChildren<SpriteRenderer>();
         anim = GetComponentInChildren<Animator>();
-        avaiableJumps = initialNumOfJumps;
+        avaiableJumps = additionalNumOfJumps;
     }
 
     void Update()
@@ -73,17 +76,21 @@ public class PlayerController : MonoBehaviour
     void CharacterMotionManager()
     {
         ResetAllTriggers();
-        Crouch();
-        Move();
-        Jump();
+        if (rb.bodyType == RigidbodyType2D.Dynamic)
+        {
+            Crouch();
+            Move();
+            Jump();
+        }
+        if (isCastingSpell) CastSpell();
     }
 
     void InputManager()
     {
         #region Move
-        horizontal = Input.GetAxisRaw("Horizontal");
-        if (Input.GetKeyDown(KeyCode.LeftShift)) isRunning = true;
-        else if (Input.GetKeyUp(KeyCode.LeftShift)) isRunning = false;
+        horizontal = Input.GetAxis("Horizontal");
+        if (Input.GetKeyDown(KeyCode.LeftShift)) isWalking = true;
+        else if (Input.GetKeyUp(KeyCode.LeftShift)) isWalking = false;
         #endregion
 
         #region Jump
@@ -92,10 +99,12 @@ public class PlayerController : MonoBehaviour
         // !isJumping && Input.GetButtonDown("Jump") will be true. That means we now cant perform multiple jumps
         // without the initial jump
         {
+            currentUpTime = Time.time;
             isJumping = true;
         }
         else if (ableToCoyoteJump && Input.GetButtonDown("Jump") && rb.velocity.y <= 0)
         {
+            currentUpTime = Time.time;
             isCoyoteJumping = true;
         }
         // check coyote trc vi multiple jump la jump phu. neu multiplejump dc check trc thi coyote jump se khong bao h dc goi.
@@ -105,6 +114,11 @@ public class PlayerController : MonoBehaviour
             avaiableJumps--;
             isMultipleJumping = true;
         }
+        else if (avaiableJumps == additionalNumOfJumps && Input.GetButton("Jump") && Time.time - currentUpTime <= maxUpTime)
+        {
+            isUp = true;
+        }
+        else if (Time.time - currentUpTime > maxUpTime || Input.GetButtonUp("Jump")) isUp = false;
         #endregion
 
         #region Crouch
@@ -116,10 +130,13 @@ public class PlayerController : MonoBehaviour
         else if (!Input.GetButton("Crouch")) isCrouching = false;
         #endregion
 
+        #region Cast spell
         if (Input.GetKeyDown(KeyCode.P) && isGrounded)
         {
+            isCastingSpell = true;
             anim.SetTrigger("CastingSpell");
         }
+        #endregion
     }
 
     void ResetAllTriggers()
@@ -130,12 +147,13 @@ public class PlayerController : MonoBehaviour
         anim.ResetTrigger("StartCrouching");
         anim.ResetTrigger("OnAir");
         anim.ResetTrigger("OnAir");
+        anim.ResetTrigger("CastingSpell");
     }
 
     void Move()
     {
         float xSpeed = horizontal * moveSpeed * 100 * Time.fixedDeltaTime;
-        if (!isCrouching && isRunning) xSpeed *= runningSpeedModifier;
+        if (!isCrouching && isWalking) xSpeed *= walkingSpeedModifier;
         if (isCrouching) xSpeed *= crouchingSpeedModifier;
 
         rb.velocity = new Vector2(xSpeed, rb.velocity.y);
@@ -177,7 +195,7 @@ public class PlayerController : MonoBehaviour
     void Jump()
     {
         if (isCrouching) isJumping = false; // Lock jumping while crouching
-        if ((isGrounded && isJumping && !fell) || (isCoyoteJumping))
+        if ((isJumping && !fell) || (isCoyoteJumping))
         // Must have the !fell here becuase after fell, char will be grounded, now the program will run this line first then realize that 
         // char is grounded and the var isJumping still true (it hasnt run the line 147 yet) so Taking off again.
         {
@@ -189,15 +207,19 @@ public class PlayerController : MonoBehaviour
             isJumping = false;
             GameObject tmpPrefab = Instantiate(jumpEffectPrefab, transform.position - new Vector3(0, 0.3f), Quaternion.identity);
             Destroy(tmpPrefab, 1);
-            rb.AddForce(new Vector2(0, jumpForce), ForceMode2D.Force);
+            rb.velocity = Vector2.up * jumpForce;
             anim.SetTrigger("TakingOff");
+        }
+        else if (isUp)
+        {
+            rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y + holdJumpForce);
         }
         else if (isMultipleJumping)
         {
             isMultipleJumping = false; // Disable immediately unless add velocity forever
             GameObject tmpPrefab = Instantiate(doubleJumpEffectPrefab, transform.position - new Vector3(0, 0.3f), Quaternion.identity);
             Destroy(tmpPrefab, 0.4f);
-            rb.velocity = Vector2.up * jumpForce / jumpForceModifier;
+            rb.velocity = Vector2.up * multipleJumpForce;
             anim.SetTrigger("TakingOff");
             //rb.AddForce(new Vector2(0, jumpForce * jumpForceModifier), ForceMode2D.Force);
         }
@@ -213,8 +235,10 @@ public class PlayerController : MonoBehaviour
         {
             anim.SetTrigger("Landing");
             fell = false;
-            avaiableJumps = initialNumOfJumps;
+            avaiableJumps = additionalNumOfJumps;
         }
+
+        if (fell) rb.velocity = new Vector2(rb.velocity.x, Mathf.Clamp(rb.velocity.y, -10f, -1)); //lock ySpeed
     }
 
     IEnumerator CoyoteJumpEnable()
@@ -246,9 +270,7 @@ public class PlayerController : MonoBehaviour
         if(anim.GetCurrentAnimatorClipInfo(0)[0].clip.name == "Spell") isCastingSpell = true;
         else isCastingSpell = false;
 
-        if (isCastingSpell)
-        {
-            rb.velocity = Vector2.zero;
-        }
+        if (isCastingSpell) rb.bodyType = RigidbodyType2D.Static;
+        else rb.bodyType = RigidbodyType2D.Dynamic;
     }
 }

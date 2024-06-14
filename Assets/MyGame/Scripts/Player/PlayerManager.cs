@@ -25,7 +25,7 @@ public class PlayerManager : MonoBehaviour
         if (PickUpIndicator() && currentNumOfItems < maxNumOfItems)
             PickUp();
         else if (DropIndicator() && currentNumOfItems > 0)
-            Drop(transform.GetChild(transform.childCount - 1).gameObject);
+            Drop(transform.GetChild(3).gameObject);
     }
 
     void PickUp()
