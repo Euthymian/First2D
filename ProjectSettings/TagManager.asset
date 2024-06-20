@@ -5,8 +5,8 @@ TagManager:
   serializedVersion: 2
   tags:
   - Crystal
-  - NormalItem
   - OnAirPlatform
+  - Teleporter
   layers:
   - Default
   - TransparentFX
@@ -15,7 +15,7 @@ TagManager:
   - Water
   - UI
   - Ground
-  - 
+  - Wall
   - NormalItem
   - 
   - 

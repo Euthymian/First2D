@@ -5,7 +5,6 @@ using UnityEngine;
 public class PlayerController : MonoBehaviour
 {
     #region Public
-    public LayerMask groundLayer;
     #endregion
 
     #region Private
@@ -15,8 +14,8 @@ public class PlayerController : MonoBehaviour
     private Animator anim;
     [SerializeField] BoxCollider2D standingCollider;
 
-    [SerializeField] private Transform headCheck;
     private float extraHeightBoxCast = 0.03f;
+    [SerializeField] private LayerMask groundLayer;
     private bool isGrounded = true;
     private bool wasGrounded = true;
 
@@ -31,24 +30,48 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float holdJumpForce;
     private bool isJumping = false;
     private bool fell = false; // This variable makes character run the Landing animation only if it fell
+    public bool Fell
+    {
+        get => fell; set => fell = value;
+    }
+    private bool isUp = false;
+    [SerializeField] private float maxUpTime;
+    private float currentUpTime;
     private bool ableToMultipleJump = true;
     private bool isMultipleJumping = false;
     private int additionalNumOfJumps = 1; // Dont count first jump
     private int avaiableJumps;
     private float multipleJumpForce = 5.6f;
-    private float delayTimeForCoyoteJump = 0.2f;
+    private float coyoteJumpDelayTime = 0.2f;
     private bool ableToCoyoteJump = false;
     private bool isCoyoteJumping = false;
-    private bool isUp = false;
-    [SerializeField] private float maxUpTime;
-    private float currentUpTime;
+    private bool ableToWallJump = true;
+    private bool isWallJumping = false;
+    private float limitTimeUpWallJump = 0.1f;
     [SerializeField] private GameObject jumpEffectPrefab;
     [SerializeField] private GameObject doubleJumpEffectPrefab;
 
+    [SerializeField] private Transform headCheck;
     private bool isCrouching;
     private float crouchingSpeedModifier = 0.25f;
 
     private bool isCastingSpell = false;
+    private float castSpellDelayTime = 1f;
+    private float currentSpellDelayTime = 0;
+
+    [SerializeField] private Transform wallCheck;
+    [SerializeField] private LayerMask wallLayer;
+    private bool isWallSliding;
+    private bool wasWallSliding;
+    private float wallSlideSpeed = 0.5f;
+
+    private bool ableToDash = true; // after claim dash ability, this turns to true
+    private bool canDash = true; // works as dash cooldown
+    private bool isDashing = false;
+    private float dashSpeed = 15f;
+    private float dashTime = 0.175f;
+    private float dashDelayTime = 1.5f;
+    [SerializeField] private TrailRenderer dashTrail;
     #endregion
 
     void Start()
@@ -75,20 +98,24 @@ public class PlayerController : MonoBehaviour
 
     void CharacterMotionManager()
     {
+        if (isDashing) return;
         ResetAllTriggers();
         if (rb.bodyType == RigidbodyType2D.Dynamic)
         {
             Crouch();
             Move();
             Jump();
+            WallSlide();
         }
         if (isCastingSpell) CastSpell();
     }
 
     void InputManager()
     {
+        if (isDashing) return; // Char cant do anything while dashing
+
         #region Move
-        horizontal = Input.GetAxis("Horizontal");
+        horizontal = Input.GetAxisRaw("Horizontal");
         if (Input.GetKeyDown(KeyCode.LeftShift)) isWalking = true;
         else if (Input.GetKeyUp(KeyCode.LeftShift)) isWalking = false;
         #endregion
@@ -103,11 +130,16 @@ public class PlayerController : MonoBehaviour
             isJumping = true;
         }
         else if (ableToCoyoteJump && Input.GetButtonDown("Jump") && rb.velocity.y <= 0)
+        // check coyote trc vi multiple jump la jump phu. neu multiplejump dc check trc thi coyote jump se khong bao h dc goi.
         {
             currentUpTime = Time.time;
             isCoyoteJumping = true;
         }
-        // check coyote trc vi multiple jump la jump phu. neu multiplejump dc check trc thi coyote jump se khong bao h dc goi.
+        else if (ableToWallJump && isWallSliding && Input.GetButtonDown("Jump"))
+        {
+            currentUpTime = Time.time - limitTimeUpWallJump;
+            isWallJumping = true;
+        }
         else if (ableToMultipleJump && Input.GetButtonDown("Jump") && avaiableJumps > 0)
         // Else if because we dont want the system check 2 types of jump simultanously
         {
@@ -118,7 +150,10 @@ public class PlayerController : MonoBehaviour
         {
             isUp = true;
         }
-        else if (Time.time - currentUpTime > maxUpTime || Input.GetButtonUp("Jump")) isUp = false;
+        else if (avaiableJumps == additionalNumOfJumps && Time.time - currentUpTime > maxUpTime || Input.GetButtonUp("Jump"))
+        {
+            isUp = false;
+        }
         #endregion
 
         #region Crouch
@@ -133,8 +168,19 @@ public class PlayerController : MonoBehaviour
         #region Cast spell
         if (Input.GetKeyDown(KeyCode.P) && isGrounded)
         {
-            isCastingSpell = true;
-            anim.SetTrigger("CastingSpell");
+            if (Time.time - currentSpellDelayTime >= castSpellDelayTime)
+            {
+                currentSpellDelayTime = Time.time;
+                isCastingSpell = true;
+                anim.SetTrigger("CastingSpell");
+            }
+        }
+        #endregion
+
+        #region Dash
+        if (ableToDash && Input.GetKeyDown(KeyCode.Q) && canDash)
+        {
+            StartCoroutine(Dash());
         }
         #endregion
     }
@@ -146,7 +192,6 @@ public class PlayerController : MonoBehaviour
         anim.ResetTrigger("Falling");
         anim.ResetTrigger("StartCrouching");
         anim.ResetTrigger("OnAir");
-        anim.ResetTrigger("OnAir");
         anim.ResetTrigger("CastingSpell");
     }
 
@@ -154,7 +199,7 @@ public class PlayerController : MonoBehaviour
     {
         float xSpeed = horizontal * moveSpeed * 100 * Time.fixedDeltaTime;
         if (!isCrouching && isWalking) xSpeed *= walkingSpeedModifier;
-        if (isCrouching) xSpeed *= crouchingSpeedModifier;
+        else if (isCrouching) xSpeed *= crouchingSpeedModifier;
 
         rb.velocity = new Vector2(xSpeed, rb.velocity.y);
 
@@ -195,7 +240,7 @@ public class PlayerController : MonoBehaviour
     void Jump()
     {
         if (isCrouching) isJumping = false; // Lock jumping while crouching
-        if ((isJumping && !fell) || (isCoyoteJumping))
+        if ((isJumping && !fell) || isCoyoteJumping || isWallJumping)
         // Must have the !fell here becuase after fell, char will be grounded, now the program will run this line first then realize that 
         // char is grounded and the var isJumping still true (it hasnt run the line 147 yet) so Taking off again.
         {
@@ -204,7 +249,15 @@ public class PlayerController : MonoBehaviour
                 isCoyoteJumping = false;
             }
 
+            if (isWallJumping)
+            {
+                transform.position += new Vector3(0.1f * -PlayerController.IsFacingRight(), 0);
+                isWallJumping = false;
+                // WallSlide() will reset multiplejump times everytime that char starts wallslide
+            }
+
             isJumping = false;
+            fell = false;
             GameObject tmpPrefab = Instantiate(jumpEffectPrefab, transform.position - new Vector3(0, 0.3f), Quaternion.identity);
             Destroy(tmpPrefab, 1);
             rb.velocity = Vector2.up * jumpForce;
@@ -217,6 +270,7 @@ public class PlayerController : MonoBehaviour
         else if (isMultipleJumping)
         {
             isMultipleJumping = false; // Disable immediately unless add velocity forever
+            fell = false;
             GameObject tmpPrefab = Instantiate(doubleJumpEffectPrefab, transform.position - new Vector3(0, 0.3f), Quaternion.identity);
             Destroy(tmpPrefab, 0.4f);
             rb.velocity = Vector2.up * multipleJumpForce;
@@ -224,8 +278,8 @@ public class PlayerController : MonoBehaviour
             //rb.AddForce(new Vector2(0, jumpForce * jumpForceModifier), ForceMode2D.Force);
         }
 
-        if (Mathf.Round(rb.velocity.y) == 3) anim.SetTrigger("OnAir");
-        else if (Mathf.Round(rb.velocity.y) == -2 || (isGrounded && !wasGrounded))
+        if (Mathf.Round(rb.velocity.y) == 2) anim.SetTrigger("OnAir");
+        else if ((isGrounded && !wasGrounded) || Mathf.Round(rb.velocity.y) == -2)
         // isGrounded && !wasGrounded means char fell then reached to the ground. Look at logic of wasGrounded and isGrounded at IsGroundedCheck()
         {
             anim.SetTrigger("Falling");
@@ -244,7 +298,7 @@ public class PlayerController : MonoBehaviour
     IEnumerator CoyoteJumpEnable()
     {
         ableToCoyoteJump = true;
-        yield return new WaitForSeconds(delayTimeForCoyoteJump);
+        yield return new WaitForSeconds(coyoteJumpDelayTime);
         ableToCoyoteJump = false;
     }
 
@@ -267,10 +321,52 @@ public class PlayerController : MonoBehaviour
 
     void CastSpell()
     {
-        if(anim.GetCurrentAnimatorClipInfo(0)[0].clip.name == "Spell") isCastingSpell = true;
+        if (anim.GetCurrentAnimatorClipInfo(0)[0].clip.name == "Spell") isCastingSpell = true;
         else isCastingSpell = false;
 
         if (isCastingSpell) rb.bodyType = RigidbodyType2D.Static;
         else rb.bodyType = RigidbodyType2D.Dynamic;
     }
+
+    void WallSlide()
+    {
+        wasWallSliding = isWallSliding;
+        if (!isGrounded && rb.velocity.y < 0)
+            isWallSliding = Physics2D.OverlapCircle(wallCheck.position, 0.05f, wallLayer);
+        else isWallSliding = false;
+
+        if (isWallSliding)
+        {
+            rb.velocity = new Vector2(rb.velocity.x, -wallSlideSpeed);
+        }
+
+        if (!isGrounded && isWallSliding && !wasWallSliding)
+        {
+            avaiableJumps = additionalNumOfJumps;
+            anim.SetTrigger("WallSliding");
+        }
+    }
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(wallCheck.position, 0.05f);
+    }
+
+    IEnumerator Dash()
+    {
+        canDash = false;
+        isDashing = true;
+        float originalGravity = rb.gravityScale;
+        rb.gravityScale = 0f;
+        rb.velocity = new Vector2(dashSpeed * IsFacingRight(), 0f);
+        dashTrail.emitting = true;
+        yield return new WaitForSeconds(dashTime);
+        dashTrail.emitting = false;
+        rb.gravityScale = originalGravity;
+        isDashing = false;
+        yield return new WaitForSeconds(dashDelayTime);
+        canDash = true;
+    }
+
 }

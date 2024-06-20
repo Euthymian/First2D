@@ -5,11 +5,16 @@ using static UnityEditor.Progress;
 
 public class FallingItemManager : MonoBehaviour
 {
+    [HideInInspector] public Transform intitialParent;
+    [HideInInspector] public Vector2 initialLocalScale;
+    bool initialTriggerStatus;
     [SerializeField] LayerMask ground;
     // Start is called before the first frame update
     void Start()
     {
-
+        intitialParent = transform.parent;
+        initialTriggerStatus = GetComponent<BoxCollider2D>().isTrigger;
+        initialLocalScale = GetComponent<Transform>().localScale;
     }
 
     // Update is called once per frame
@@ -30,18 +35,23 @@ public class FallingItemManager : MonoBehaviour
         {
             if (rb2D.bodyType == RigidbodyType2D.Dynamic)
             {
-                if (Physics2D.BoxCast(GetComponent<BoxCollider2D>().bounds.center, GetComponent<BoxCollider2D>().bounds.size * 1.05f, 0, Vector2.zero, 0, ground))
+                if (Physics2D.BoxCast(GetComponent<BoxCollider2D>().bounds.center, GetComponent<BoxCollider2D>().bounds.size * 1.15f, 0, Vector2.zero, 0, ground))
                 {
                     Destroy(rb2D);
-                    GetComponent<BoxCollider2D>().isTrigger = true;
+                    GetComponent<BoxCollider2D>().isTrigger = initialTriggerStatus;
                 }
             }
         }
     }
 
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        
+    }
+
     private void OnDrawGizmos()
     {
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawCube(GetComponent<BoxCollider2D>().bounds.center, GetComponent<BoxCollider2D>().bounds.size * 1.05f);
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireCube(GetComponent<BoxCollider2D>().bounds.center, GetComponent<BoxCollider2D>().bounds.size * 1.1f);
     }
 }

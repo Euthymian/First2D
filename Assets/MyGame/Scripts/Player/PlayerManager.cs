@@ -10,6 +10,7 @@ public class PlayerManager : MonoBehaviour
     [SerializeField] Transform pickUpPoint;
     int maxNumOfItems = 2;
     int currentNumOfItems = 0;
+    int startIndexOfPickUpItem = 4;
 
     void Start()
     {
@@ -25,7 +26,7 @@ public class PlayerManager : MonoBehaviour
         if (PickUpIndicator() && currentNumOfItems < maxNumOfItems)
             PickUp();
         else if (DropIndicator() && currentNumOfItems > 0)
-            Drop(transform.GetChild(3).gameObject);
+            Drop(transform.GetChild(startIndexOfPickUpItem).gameObject);
     }
 
     void PickUp()
@@ -59,8 +60,8 @@ public class PlayerManager : MonoBehaviour
     void Drop(GameObject item)
     {
         currentNumOfItems--;
-        item.transform.parent = null;
-        item.transform.localScale = new Vector3(0.5f, 0.5f);
+        item.transform.parent = item.GetComponent<FallingItemManager>().intitialParent;
+        item.transform.localScale = item.GetComponent<FallingItemManager>().initialLocalScale;
         item.GetComponent<BoxCollider2D>().isTrigger = false;
         item.transform.position = new Vector3(transform.position.x + PlayerController.IsFacingRight() * (0.01f + item.GetComponent<BoxCollider2D>().bounds.extents.x + GetComponent<BoxCollider2D>().bounds.extents.x), transform.position.y, 0);
         item.AddComponent<Rigidbody2D>();
