@@ -7,6 +7,7 @@ TagManager:
   - Crystal
   - OnAirPlatform
   - Teleporter
+  - OneWayPlatform
   layers:
   - Default
   - TransparentFX
@@ -17,7 +18,7 @@ TagManager:
   - Ground
   - Wall
   - NormalItem
-  - 
+  - OneWayPlatform
   - 
   - 
   - 

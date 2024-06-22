@@ -9,10 +9,10 @@ public class PlayerController : MonoBehaviour
 
     #region Private
     private Rigidbody2D rb;
-    BoxCollider2D localBox2D;
     private SpriteRenderer spriteCharacter;
     private Animator anim;
-    [SerializeField] BoxCollider2D standingCollider;
+    [SerializeField] private BoxCollider2D headCollider;
+    [SerializeField] private BoxCollider2D bobyCollider;
 
     private float extraHeightBoxCast = 0.03f;
     [SerializeField] private LayerMask groundLayer;
@@ -67,16 +67,20 @@ public class PlayerController : MonoBehaviour
 
     private bool ableToDash = true; // after claim dash ability, this turns to true
     private bool canDash = true; // works as dash cooldown
+    private bool nowDash = false; // Indicator for start coroutine
     private bool isDashing = false;
     private float dashSpeed = 15f;
     private float dashTime = 0.175f;
     private float dashDelayTime = 1.5f;
     [SerializeField] private TrailRenderer dashTrail;
+
+    private GameObject currentOWP;
+    private bool nowFallThroughOWP = false;
+    private float timeForFallThroughOWP = 1f;
     #endregion
 
     void Start()
     {
-        localBox2D = GetComponent<BoxCollider2D>();
         rb = GetComponent<Rigidbody2D>();
         spriteCharacter = GetComponentInChildren<SpriteRenderer>();
         anim = GetComponentInChildren<Animator>();
@@ -106,6 +110,8 @@ public class PlayerController : MonoBehaviour
             Move();
             Jump();
             WallSlide();
+            Dash();
+            FallThroughOWP();
         }
         if (isCastingSpell) CastSpell();
     }
@@ -113,6 +119,14 @@ public class PlayerController : MonoBehaviour
     void InputManager()
     {
         if (isDashing) return; // Char cant do anything while dashing
+
+        if (isCrouching && Input.GetButtonDown("Jump"))
+        {
+            if (currentOWP != null)
+            {
+                nowFallThroughOWP = true;
+            }
+        }
 
         #region Move
         horizontal = Input.GetAxisRaw("Horizontal");
@@ -180,7 +194,7 @@ public class PlayerController : MonoBehaviour
         #region Dash
         if (ableToDash && Input.GetKeyDown(KeyCode.Q) && canDash)
         {
-            StartCoroutine(Dash());
+            nowDash = true;
         }
         #endregion
     }
@@ -193,6 +207,16 @@ public class PlayerController : MonoBehaviour
         anim.ResetTrigger("StartCrouching");
         anim.ResetTrigger("OnAir");
         anim.ResetTrigger("CastingSpell");
+    }
+
+    void FallThroughOWP()
+    {
+        if (nowFallThroughOWP) StartCoroutine(FallThroughOWPProcedure());
+    }
+
+    void Dash()
+    {
+        if (nowDash) StartCoroutine(DashProcedure());
     }
 
     void Move()
@@ -226,15 +250,15 @@ public class PlayerController : MonoBehaviour
     void IsGroundedCheck()
     {
         wasGrounded = isGrounded;
-        isGrounded = Physics2D.BoxCast(localBox2D.bounds.center, localBox2D.bounds.size, 0f, Vector2.down, extraHeightBoxCast, groundLayer);
+        isGrounded = Physics2D.BoxCast(bobyCollider.bounds.center, bobyCollider.bounds.size, 0f, Vector2.down, extraHeightBoxCast, groundLayer);
         //isGrounded = Physics2D.OverlapCircle(groundCheck.position, 0.05f, groundLayer);
         Color rayColor;
         if (isGrounded) rayColor = Color.red;
         else rayColor = Color.green;
 
-        Debug.DrawRay(localBox2D.bounds.center + new Vector3(localBox2D.bounds.extents.x, 0), Vector2.down * (localBox2D.bounds.extents.y + extraHeightBoxCast), rayColor);
-        Debug.DrawRay(localBox2D.bounds.center - new Vector3(localBox2D.bounds.extents.x, 0), Vector2.down * (localBox2D.bounds.extents.y + extraHeightBoxCast), rayColor);
-        Debug.DrawRay(localBox2D.bounds.center - new Vector3(localBox2D.bounds.extents.x, localBox2D.bounds.extents.y + extraHeightBoxCast), Vector2.right * (localBox2D.bounds.extents.x * 2f), rayColor);
+        Debug.DrawRay(bobyCollider.bounds.center + new Vector3(bobyCollider.bounds.extents.x, 0), Vector2.down * (bobyCollider.bounds.extents.y + extraHeightBoxCast), rayColor);
+        Debug.DrawRay(bobyCollider.bounds.center - new Vector3(bobyCollider.bounds.extents.x, 0), Vector2.down * (bobyCollider.bounds.extents.y + extraHeightBoxCast), rayColor);
+        Debug.DrawRay(bobyCollider.bounds.center - new Vector3(bobyCollider.bounds.extents.x, bobyCollider.bounds.extents.y + extraHeightBoxCast), Vector2.right * (bobyCollider.bounds.extents.x * 2f), rayColor);
     }
 
     void Jump()
@@ -308,7 +332,7 @@ public class PlayerController : MonoBehaviour
         {
             if (!isCrouching && Physics2D.OverlapCircle(headCheck.position, 0.05f, groundLayer)) isCrouching = true;
             // Here should use circle collision check with small radius because we dont want thes edge of overhead ground can reach to boxcast
-            standingCollider.enabled = !isCrouching;
+            headCollider.enabled = !isCrouching;
             anim.SetBool("Crouching", isCrouching);
         }
     }
@@ -353,8 +377,9 @@ public class PlayerController : MonoBehaviour
         Gizmos.DrawWireSphere(wallCheck.position, 0.05f);
     }
 
-    IEnumerator Dash()
+    IEnumerator DashProcedure()
     {
+        nowDash = false;
         canDash = false;
         isDashing = true;
         float originalGravity = rb.gravityScale;
@@ -369,4 +394,31 @@ public class PlayerController : MonoBehaviour
         canDash = true;
     }
 
+    private IEnumerator FallThroughOWPProcedure()
+    {
+        nowFallThroughOWP = false;
+        BoxCollider2D platformCollider = currentOWP.GetComponent<BoxCollider2D>();
+
+        Physics2D.IgnoreCollision(bobyCollider, platformCollider);
+        Physics2D.IgnoreCollision(headCollider, platformCollider);
+        yield return new WaitForSeconds(timeForFallThroughOWP);
+        Physics2D.IgnoreCollision(bobyCollider, platformCollider, false);
+        Physics2D.IgnoreCollision(headCollider, platformCollider, false);
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.gameObject.CompareTag("OneWayPlatform"))
+        {
+            currentOWP = collision.gameObject;
+        }
+    }
+
+    private void OnCollisionExit2D(Collision2D collision)
+    {
+        if (collision.gameObject.CompareTag("OneWayPlatform"))
+        {
+            currentOWP = null;
+        }
+    }
 }
