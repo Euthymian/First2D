@@ -14,7 +14,6 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private BoxCollider2D headCollider;
     [SerializeField] private BoxCollider2D bobyCollider;
 
-    private float extraHeightBoxCast = 0.03f;
     [SerializeField] private LayerMask groundLayer;
     private bool isGrounded = true;
     private bool wasGrounded = true;
@@ -250,15 +249,15 @@ public class PlayerController : MonoBehaviour
     void IsGroundedCheck()
     {
         wasGrounded = isGrounded;
-        isGrounded = Physics2D.BoxCast(bobyCollider.bounds.center, bobyCollider.bounds.size, 0f, Vector2.down, extraHeightBoxCast, groundLayer);
+        isGrounded = Physics2D.BoxCast(new Vector2(bobyCollider.bounds.center.x, bobyCollider.bounds.center.y - bobyCollider.bounds.extents.y), new Vector2(bobyCollider.bounds.size.x, 0.02f), 0f, Vector2.down, 0, groundLayer);
         //isGrounded = Physics2D.OverlapCircle(groundCheck.position, 0.05f, groundLayer);
         Color rayColor;
         if (isGrounded) rayColor = Color.red;
         else rayColor = Color.green;
 
-        Debug.DrawRay(bobyCollider.bounds.center + new Vector3(bobyCollider.bounds.extents.x, 0), Vector2.down * (bobyCollider.bounds.extents.y + extraHeightBoxCast), rayColor);
-        Debug.DrawRay(bobyCollider.bounds.center - new Vector3(bobyCollider.bounds.extents.x, 0), Vector2.down * (bobyCollider.bounds.extents.y + extraHeightBoxCast), rayColor);
-        Debug.DrawRay(bobyCollider.bounds.center - new Vector3(bobyCollider.bounds.extents.x, bobyCollider.bounds.extents.y + extraHeightBoxCast), Vector2.right * (bobyCollider.bounds.extents.x * 2f), rayColor);
+        Debug.DrawRay(bobyCollider.bounds.center + new Vector3(bobyCollider.bounds.extents.x, 0), Vector2.down * (bobyCollider.bounds.extents.y + 0.03f), rayColor);
+        Debug.DrawRay(bobyCollider.bounds.center - new Vector3(bobyCollider.bounds.extents.x, 0), Vector2.down * (bobyCollider.bounds.extents.y + 0.03f), rayColor);
+        Debug.DrawRay(bobyCollider.bounds.center - new Vector3(bobyCollider.bounds.extents.x, bobyCollider.bounds.extents.y + 0.03f), Vector2.right * (bobyCollider.bounds.extents.x * 2f), rayColor);
     }
 
     void Jump()
