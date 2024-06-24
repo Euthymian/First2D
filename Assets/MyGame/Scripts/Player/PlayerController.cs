@@ -51,7 +51,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private GameObject doubleJumpEffectPrefab;
 
     [SerializeField] private Transform headCheck;
-    private bool isCrouching;
+    [SerializeField] private bool isCrouching;
     private float crouchingSpeedModifier = 0.25f;
 
     private bool isCastingSpell = false;
@@ -76,6 +76,13 @@ public class PlayerController : MonoBehaviour
     private GameObject currentOWP;
     private bool nowFallThroughOWP = false;
     private float timeForFallThroughOWP = 1f;
+
+    private float vertical;
+    [SerializeField] private LayerMask ladderLayer;
+    [SerializeField] private float climbingSpeed;
+    private bool isClimbing;
+    private bool insideLadder;
+
     #endregion
 
     void Start()
@@ -92,33 +99,11 @@ public class PlayerController : MonoBehaviour
         //Debug.Log(anim.GetCurrentAnimatorClipInfo(0)[0].clip.name);
     }
 
-    private void FixedUpdate()
-    {
-        IsGroundedCheck();
-        if (wasGrounded && !isGrounded) StartCoroutine(CoyoteJumpEnable());
-        CharacterMotionManager();
-    }
-
-    void CharacterMotionManager()
-    {
-        if (isDashing) return;
-        ResetAllTriggers();
-        if (rb.bodyType == RigidbodyType2D.Dynamic)
-        {
-            Crouch();
-            Move();
-            Jump();
-            WallSlide();
-            Dash();
-            FallThroughOWP();
-        }
-        if (isCastingSpell) CastSpell();
-    }
-
     void InputManager()
     {
         if (isDashing) return; // Char cant do anything while dashing
 
+        #region OneWayPlatform
         if (isCrouching && Input.GetButtonDown("Jump"))
         {
             if (currentOWP != null)
@@ -126,6 +111,7 @@ public class PlayerController : MonoBehaviour
                 nowFallThroughOWP = true;
             }
         }
+        #endregion
 
         #region Move
         horizontal = Input.GetAxisRaw("Horizontal");
@@ -196,6 +182,50 @@ public class PlayerController : MonoBehaviour
             nowDash = true;
         }
         #endregion
+
+        #region LadderClimb
+        if (insideLadder)
+        {
+            if (Input.GetKeyDown(KeyCode.C))
+            {
+                isClimbing = true;
+                anim.SetBool("ClimbingLadder", true);
+                anim.SetTrigger("EnterClimbingLadder");
+            }
+        }
+        else
+        {
+            isClimbing = false;
+            anim.SetBool("ClimbingLadder", false);
+        }
+
+        vertical = Input.GetAxisRaw("Vertical");
+        #endregion
+    }
+
+    private void FixedUpdate()
+    {
+        IsGroundedCheck();
+        InsideLadderCheck();
+        if (wasGrounded && !isGrounded) StartCoroutine(CoyoteJumpEnable());
+        CharacterMotionManager();
+    }
+
+    void CharacterMotionManager()
+    {
+        ResetAllTriggers();
+        if (isDashing) return;
+        if (rb.bodyType == RigidbodyType2D.Dynamic)
+        {
+            Crouch();
+            Move();
+            Jump();
+            WallSlide();
+            Dash();
+            FallThroughOWP();
+            ClimbLadder();
+        }
+        if (isCastingSpell) CastSpell();
     }
 
     void ResetAllTriggers()
@@ -206,6 +236,7 @@ public class PlayerController : MonoBehaviour
         anim.ResetTrigger("StartCrouching");
         anim.ResetTrigger("OnAir");
         anim.ResetTrigger("CastingSpell");
+        anim.ResetTrigger("EnterClimbingLadder");
     }
 
     void FallThroughOWP()
@@ -249,7 +280,7 @@ public class PlayerController : MonoBehaviour
     void IsGroundedCheck()
     {
         wasGrounded = isGrounded;
-        isGrounded = Physics2D.BoxCast(new Vector2(bobyCollider.bounds.center.x, bobyCollider.bounds.center.y - bobyCollider.bounds.extents.y), new Vector2(bobyCollider.bounds.size.x, 0.02f), 0f, Vector2.down, 0, groundLayer);
+        isGrounded = Physics2D.BoxCast(new Vector2(bobyCollider.bounds.center.x, bobyCollider.bounds.center.y - bobyCollider.bounds.extents.y), new Vector2(bobyCollider.bounds.size.x, 0.05f), 0f, Vector2.down, 0, groundLayer);
         //isGrounded = Physics2D.OverlapCircle(groundCheck.position, 0.05f, groundLayer);
         Color rayColor;
         if (isGrounded) rayColor = Color.red;
@@ -262,7 +293,12 @@ public class PlayerController : MonoBehaviour
 
     void Jump()
     {
-        if (isCrouching) isJumping = false; // Lock jumping while crouching
+        if (isCrouching || isClimbing)
+        {
+            isJumping = false; // add this line because while crouching, if press space, the isJumping will turn to true and after standing, char will jump
+            return;
+        } // Lock jumping while crouching or climbing
+
         if ((isJumping && !fell) || isCoyoteJumping || isWallJumping)
         // Must have the !fell here becuase after fell, char will be grounded, now the program will run this line first then realize that 
         // char is grounded and the var isJumping still true (it hasnt run the line 147 yet) so Taking off again.
@@ -302,7 +338,7 @@ public class PlayerController : MonoBehaviour
         }
 
         if (Mathf.Round(rb.velocity.y) == 2) anim.SetTrigger("OnAir");
-        else if ((isGrounded && !wasGrounded) || Mathf.Round(rb.velocity.y) == -2)
+        else if ((isGrounded && !wasGrounded) || Mathf.Round(rb.velocity.y) == -1)
         // isGrounded && !wasGrounded means char fell then reached to the ground. Look at logic of wasGrounded and isGrounded at IsGroundedCheck()
         {
             anim.SetTrigger("Falling");
@@ -370,11 +406,11 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    private void OnDrawGizmos()
-    {
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(wallCheck.position, 0.05f);
-    }
+    //private void OnDrawGizmos()
+    //{
+    //    Gizmos.color = Color.red;
+    //    Gizmos.DrawWireSphere(wallCheck.position, 0.05f);
+    //}
 
     IEnumerator DashProcedure()
     {
@@ -400,6 +436,7 @@ public class PlayerController : MonoBehaviour
 
         Physics2D.IgnoreCollision(bobyCollider, platformCollider);
         Physics2D.IgnoreCollision(headCollider, platformCollider);
+        anim.SetTrigger("Falling");
         yield return new WaitForSeconds(timeForFallThroughOWP);
         Physics2D.IgnoreCollision(bobyCollider, platformCollider, false);
         Physics2D.IgnoreCollision(headCollider, platformCollider, false);
@@ -419,5 +456,22 @@ public class PlayerController : MonoBehaviour
         {
             currentOWP = null;
         }
+    }
+
+    void InsideLadderCheck()
+    {
+        insideLadder = Physics2D.BoxCast(new Vector2(bobyCollider.bounds.center.x, bobyCollider.bounds.center.y - bobyCollider.bounds.extents.y + 0.025f), new Vector2(bobyCollider.bounds.size.x - 0.1f, 0.049f), 0f, Vector2.down, 0, ladderLayer);
+    }
+
+    void ClimbLadder()
+    {
+        if (isClimbing)
+        {
+            rb.velocity = new Vector2(rb.velocity.x, climbingSpeed * vertical);
+            anim.SetFloat("ySpeed", Mathf.Round(rb.velocity.y));
+            //print(anim.GetFloat("ySpeed"));
+            rb.gravityScale = 0;
+        }
+        else rb.gravityScale = 2;
     }
 }
