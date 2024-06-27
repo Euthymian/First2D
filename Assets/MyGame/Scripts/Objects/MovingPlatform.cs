@@ -59,7 +59,7 @@ public class MovingPlatform : MonoBehaviour
         if (collision.gameObject.CompareTag("Player"))
         {
 
-            if (collision.GetComponent<Rigidbody2D>().velocity.y <= 0)
+            if (collision.GetComponent<Rigidbody2D>().velocity.y <= 0.5)
             {
                 //collision.gameObject.transform.parent = transform;
                 collision.GetComponent<PlayerController>().OnMovingPlatform = true;

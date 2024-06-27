@@ -7081,7 +7081,6 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 1024
   climbingSpeed: 2
-  onMovingPlatform: 0
   speedUpWhileOnMovingPlatform: 6
 --- !u!114 &509759997
 MonoBehaviour:
@@ -8275,7 +8274,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 77692640657e0444d937725be7e494ed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speed: 2.25
+  speed: 1.49
 --- !u!251 &685986355
 PlatformEffector2D:
   m_ObjectHideFlags: 0

@@ -81,7 +81,7 @@ public class PlayerController : MonoBehaviour
     private bool isClimbing;
     private bool insideLadder;
 
-    [SerializeField] bool onMovingPlatform;
+    bool onMovingPlatform;
     public bool OnMovingPlatform { get => onMovingPlatform; set => onMovingPlatform = value; }
     public float speedUpWhileOnMovingPlatform;
     private Rigidbody2D mpRb;
@@ -128,8 +128,8 @@ public class PlayerController : MonoBehaviour
 
         #region Jump
         float localYVelocity = default;
-        if (mpRb != null) localYVelocity = rb.velocity.y - mpRb.velocity.y;
-        else localYVelocity = rb.velocity.y;
+        if (mpRb != null) localYVelocity = 0;
+        else localYVelocity = Mathf.Round(rb.velocity.y);
         if (!isJumping && Input.GetButtonDown("Jump") && isGrounded && localYVelocity <= 0) // There are some cases where char is inside ground (OWP) but velocity > 0 
         // Must have isGrounded here because while char is fall from ground without jump, the condition of
         // !isJumping && Input.GetButtonDown("Jump") will be true. That means we now cant perform multiple jumps
@@ -331,7 +331,7 @@ public class PlayerController : MonoBehaviour
             fell = false;
             GameObject tmpPrefab = Instantiate(jumpEffectPrefab, transform.position - new Vector3(0, 0.3f), Quaternion.identity);
             Destroy(tmpPrefab, 1);
-            rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y + jumpForce);
+            rb.velocity = new Vector2(rb.velocity.x, jumpForce);
             anim.SetTrigger("TakingOff");
         }
         else if (isUp)
@@ -515,10 +515,5 @@ public class PlayerController : MonoBehaviour
     {
         if (OnMovingPlatform && isGrounded) playerGravityScale = superGravityScale;
         else playerGravityScale = normalGravityScale;
-    }
-
-    void IfOnMovingPlatform()
-    {
-
     }
 }
