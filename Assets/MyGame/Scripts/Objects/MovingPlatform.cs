@@ -46,6 +46,7 @@ public class MovingPlatform : MonoBehaviour
     private void FixedUpdate()
     {
         MovePlatformByRb();
+        //print(rb.velocity.x);
     }
 
     void MovePlatformByRb()
@@ -58,12 +59,20 @@ public class MovingPlatform : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Player"))
         {
-
             if (collision.GetComponent<Rigidbody2D>().velocity.y <= 0.5)
             {
-                //collision.gameObject.transform.parent = transform;
                 collision.GetComponent<PlayerController>().OnMovingPlatform = true;
             }
+        }
+    }
+
+    private void OnTriggerStay2D(Collider2D collision)
+    {
+        if (collision.gameObject.CompareTag("Player"))
+        {
+            Rigidbody2D playerRb = collision.GetComponent<Rigidbody2D>();
+            //playerRb.velocity = playerRb.velocity + rb.velocity;
+            playerRb.velocity = new Vector2(10, playerRb.velocity.y);
         }
     }
 
@@ -71,7 +80,6 @@ public class MovingPlatform : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Player"))
         {
-            //collision.gameObject.transform.parent = null;
             collision.GetComponent<PlayerController>().OnMovingPlatform = false;
         }
     }

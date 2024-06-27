@@ -102,7 +102,7 @@ public class PlayerController : MonoBehaviour
         InputManager();
         SetGravityOnMovingPlatform();
         //Debug.Log(anim.GetCurrentAnimatorClipInfo(0)[0].clip.name);
-        //print(rb.velocity);
+        print(rb.velocity.x);
     }
 
     void InputManager()
@@ -266,6 +266,7 @@ public class PlayerController : MonoBehaviour
         if (!isCrouching && isWalking) xSpeed *= walkingSpeedModifier;
         else if (isCrouching) xSpeed *= crouchingSpeedModifier;
 
+        if (mpRb != null) xSpeed += mpRb.velocity.x;
         rb.velocity = new Vector2(xSpeed, rb.velocity.y);
 
         if ((horizontal > 0 && !isFacingRight) || (horizontal < 0 && isFacingRight))
