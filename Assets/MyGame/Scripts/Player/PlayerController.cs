@@ -11,8 +11,10 @@ public class PlayerController : MonoBehaviour
     private Rigidbody2D rb;
     private SpriteRenderer spriteCharacter;
     private Animator anim;
-    [SerializeField] private BoxCollider2D headCollider;
-    [SerializeField] private BoxCollider2D bobyCollider;
+    private BoxCollider2D bodyCollider;
+    private float normalGravityScale = 2;
+    private float superGravityScale = 1000;
+    private float playerGravityScale;
 
     [SerializeField] private LayerMask groundLayer;
     private bool isGrounded = true;
@@ -21,7 +23,6 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float moveSpeed;
     private float walkingSpeedModifier = 0.5f;
     private float horizontal;
-    public float Horizontal { get => horizontal; }
     static private bool isFacingRight = true;
     private bool isWalking = false;
 
@@ -29,10 +30,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float holdJumpForce;
     private bool isJumping = false;
     private bool fell = false; // This variable makes character run the Landing animation only if it fell
-    public bool Fell
-    {
-        get => fell; set => fell = value;
-    }
+    public bool Fell { get => fell; set => fell = value; }
     private bool isUp = false;
     [SerializeField] private float maxUpTime;
     private float currentUpTime;
@@ -51,7 +49,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private GameObject doubleJumpEffectPrefab;
 
     [SerializeField] private Transform headCheck;
-    [SerializeField] private bool isCrouching;
+    private bool isCrouching;
     private float crouchingSpeedModifier = 0.25f;
 
     private bool isCastingSpell = false;
@@ -83,20 +81,28 @@ public class PlayerController : MonoBehaviour
     private bool isClimbing;
     private bool insideLadder;
 
+    [SerializeField] bool onMovingPlatform;
+    public bool OnMovingPlatform { get => onMovingPlatform; set => onMovingPlatform = value; }
+    public float speedUpWhileOnMovingPlatform;
+    private Rigidbody2D mpRb;
     #endregion
 
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
+        bodyCollider = GetComponent<BoxCollider2D>();  
         spriteCharacter = GetComponentInChildren<SpriteRenderer>();
         anim = GetComponentInChildren<Animator>();
         avaiableJumps = additionalNumOfJumps;
+        playerGravityScale = 2;
     }
 
     void Update()
     {
         InputManager();
+        SetGravityOnMovingPlatform();
         //Debug.Log(anim.GetCurrentAnimatorClipInfo(0)[0].clip.name);
+        //print(rb.velocity);
     }
 
     void InputManager()
@@ -108,6 +114,7 @@ public class PlayerController : MonoBehaviour
         {
             if (currentOWP != null)
             {
+                if(onMovingPlatform) onMovingPlatform = false;
                 nowFallThroughOWP = true;
             }
         }
@@ -120,11 +127,15 @@ public class PlayerController : MonoBehaviour
         #endregion
 
         #region Jump
-        if (!isJumping && Input.GetButtonDown("Jump") && isGrounded)
+        float localYVelocity = default;
+        if (mpRb != null) localYVelocity = rb.velocity.y - mpRb.velocity.y;
+        else localYVelocity = rb.velocity.y;
+        if (!isJumping && Input.GetButtonDown("Jump") && isGrounded && localYVelocity <= 0) // There are some cases where char is inside ground (OWP) but velocity > 0 
         // Must have isGrounded here because while char is fall from ground without jump, the condition of
         // !isJumping && Input.GetButtonDown("Jump") will be true. That means we now cant perform multiple jumps
         // without the initial jump
         {
+            OnMovingPlatform = false;
             currentUpTime = Time.time;
             isJumping = true;
         }
@@ -164,7 +175,7 @@ public class PlayerController : MonoBehaviour
         else if (!Input.GetButton("Crouch")) isCrouching = false;
         #endregion
 
-        #region Cast spell
+        #region CastSpell
         if (Input.GetKeyDown(KeyCode.P) && isGrounded)
         {
             if (Time.time - currentSpellDelayTime >= castSpellDelayTime)
@@ -280,21 +291,22 @@ public class PlayerController : MonoBehaviour
     void IsGroundedCheck()
     {
         wasGrounded = isGrounded;
-        isGrounded = Physics2D.BoxCast(new Vector2(bobyCollider.bounds.center.x, bobyCollider.bounds.center.y - bobyCollider.bounds.extents.y), new Vector2(bobyCollider.bounds.size.x, 0.05f), 0f, Vector2.down, 0, groundLayer);
+        isGrounded = Physics2D.BoxCast(new Vector2(bodyCollider.bounds.center.x, bodyCollider.bounds.center.y - bodyCollider.bounds.extents.y), new Vector2(bodyCollider.bounds.size.x, 0.05f), 0f, Vector2.down, 0, groundLayer);
         //isGrounded = Physics2D.OverlapCircle(groundCheck.position, 0.05f, groundLayer);
         Color rayColor;
         if (isGrounded) rayColor = Color.red;
         else rayColor = Color.green;
 
-        Debug.DrawRay(bobyCollider.bounds.center + new Vector3(bobyCollider.bounds.extents.x, 0), Vector2.down * (bobyCollider.bounds.extents.y + 0.03f), rayColor);
-        Debug.DrawRay(bobyCollider.bounds.center - new Vector3(bobyCollider.bounds.extents.x, 0), Vector2.down * (bobyCollider.bounds.extents.y + 0.03f), rayColor);
-        Debug.DrawRay(bobyCollider.bounds.center - new Vector3(bobyCollider.bounds.extents.x, bobyCollider.bounds.extents.y + 0.03f), Vector2.right * (bobyCollider.bounds.extents.x * 2f), rayColor);
+        Debug.DrawRay(bodyCollider.bounds.center + new Vector3(bodyCollider.bounds.extents.x, 0), Vector2.down * (bodyCollider.bounds.extents.y + 0.03f), rayColor);
+        Debug.DrawRay(bodyCollider.bounds.center - new Vector3(bodyCollider.bounds.extents.x, 0), Vector2.down * (bodyCollider.bounds.extents.y + 0.03f), rayColor);
+        Debug.DrawRay(bodyCollider.bounds.center - new Vector3(bodyCollider.bounds.extents.x, bodyCollider.bounds.extents.y + 0.03f), Vector2.right * (bodyCollider.bounds.extents.x * 2f), rayColor);
     }
 
     void Jump()
     {
-        if (isCrouching || isClimbing)
+        if (isCrouching || isClimbing) 
         {
+            isMultipleJumping = false;
             isJumping = false; // add this line because while crouching, if press space, the isJumping will turn to true and after standing, char will jump
             return;
         } // Lock jumping while crouching or climbing
@@ -319,7 +331,7 @@ public class PlayerController : MonoBehaviour
             fell = false;
             GameObject tmpPrefab = Instantiate(jumpEffectPrefab, transform.position - new Vector3(0, 0.3f), Quaternion.identity);
             Destroy(tmpPrefab, 1);
-            rb.velocity = Vector2.up * jumpForce;
+            rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y + jumpForce);
             anim.SetTrigger("TakingOff");
         }
         else if (isUp)
@@ -338,7 +350,7 @@ public class PlayerController : MonoBehaviour
         }
 
         if (Mathf.Round(rb.velocity.y) == 2) anim.SetTrigger("OnAir");
-        else if ((isGrounded && !wasGrounded) || Mathf.Round(rb.velocity.y) == -1)
+        else if ((isGrounded && !wasGrounded) || Mathf.Round(rb.velocity.y) == -2)
         // isGrounded && !wasGrounded means char fell then reached to the ground. Look at logic of wasGrounded and isGrounded at IsGroundedCheck()
         {
             anim.SetTrigger("Falling");
@@ -367,9 +379,19 @@ public class PlayerController : MonoBehaviour
         {
             if (!isCrouching && Physics2D.OverlapCircle(headCheck.position, 0.05f, groundLayer)) isCrouching = true;
             // Here should use circle collision check with small radius because we dont want thes edge of overhead ground can reach to boxcast
-            headCollider.enabled = !isCrouching;
+            if (!isCrouching)
+            {
+                bodyCollider.size = new Vector2(bodyCollider.size.x, 0.8070784f);
+                bodyCollider.offset = new Vector2(bodyCollider.offset.x, 0.04622972f);
+            }
+            else
+            {
+                bodyCollider.size = new Vector2(bodyCollider.size.x, 0.6040835f);
+                bodyCollider.offset = new Vector2(bodyCollider.offset.x, -0.05526769f);
+            }
             anim.SetBool("Crouching", isCrouching);
         }
+        else isCrouching = false;
     }
 
     static public int IsFacingRight()
@@ -434,17 +456,15 @@ public class PlayerController : MonoBehaviour
         nowFallThroughOWP = false;
         BoxCollider2D platformCollider = currentOWP.GetComponent<BoxCollider2D>();
 
-        Physics2D.IgnoreCollision(bobyCollider, platformCollider);
-        Physics2D.IgnoreCollision(headCollider, platformCollider);
+        Physics2D.IgnoreCollision(bodyCollider, platformCollider);
         anim.SetTrigger("Falling");
         yield return new WaitForSeconds(timeForFallThroughOWP);
-        Physics2D.IgnoreCollision(bobyCollider, platformCollider, false);
-        Physics2D.IgnoreCollision(headCollider, platformCollider, false);
+        Physics2D.IgnoreCollision(bodyCollider, platformCollider, false);
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (collision.gameObject.CompareTag("OneWayPlatform"))
+        if (collision.gameObject.layer == 9) // 9 means OneWayPlatform
         {
             currentOWP = collision.gameObject;
         }
@@ -452,7 +472,7 @@ public class PlayerController : MonoBehaviour
 
     private void OnCollisionExit2D(Collision2D collision)
     {
-        if (collision.gameObject.CompareTag("OneWayPlatform"))
+        if (collision.gameObject.layer == 9)
         {
             currentOWP = null;
         }
@@ -460,7 +480,7 @@ public class PlayerController : MonoBehaviour
 
     void InsideLadderCheck()
     {
-        insideLadder = Physics2D.BoxCast(new Vector2(bobyCollider.bounds.center.x, bobyCollider.bounds.center.y - bobyCollider.bounds.extents.y + 0.025f), new Vector2(bobyCollider.bounds.size.x - 0.1f, 0.049f), 0f, Vector2.down, 0, ladderLayer);
+        insideLadder = Physics2D.BoxCast(new Vector2(bodyCollider.bounds.center.x, bodyCollider.bounds.center.y - bodyCollider.bounds.extents.y + 0.025f), new Vector2(bodyCollider.bounds.size.x - 0.1f, 0.049f), 0f, Vector2.down, 0, ladderLayer);
     }
 
     void ClimbLadder()
@@ -472,6 +492,33 @@ public class PlayerController : MonoBehaviour
             //print(anim.GetFloat("ySpeed"));
             rb.gravityScale = 0;
         }
-        else rb.gravityScale = 2;
+        else rb.gravityScale = playerGravityScale;
+    }
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.gameObject.CompareTag("MovingPlatform"))
+        {
+            mpRb = collision.GetComponent<Rigidbody2D>();
+        }
+    }
+
+    private void OnTriggerExit2D(Collider2D collision)
+    {
+        if (collision.gameObject.CompareTag("MovingPlatform"))
+        {
+            mpRb = null;
+        }
+    }
+
+    void SetGravityOnMovingPlatform()
+    {
+        if (OnMovingPlatform && isGrounded) playerGravityScale = superGravityScale;
+        else playerGravityScale = normalGravityScale;
+    }
+
+    void IfOnMovingPlatform()
+    {
+
     }
 }
