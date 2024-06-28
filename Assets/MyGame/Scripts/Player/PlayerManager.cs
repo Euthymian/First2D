@@ -26,7 +26,7 @@ public class PlayerManager : MonoBehaviour
         if (PickUpIndicator() && currentNumOfItems < maxNumOfItems)
             PickUp();
         else if (DropIndicator() && currentNumOfItems > 0)
-            Drop(transform.GetChild(startIndexOfPickUpItem).gameObject);
+            Drop(transform.GetChild(transform.childCount-1).gameObject);
     }
 
     void PickUp()
@@ -38,6 +38,7 @@ public class PlayerManager : MonoBehaviour
             currentNumOfItems++;
 
             tmp.GetComponent<BoxCollider2D>().isTrigger = true;
+            tmp.GetComponent<BoxCollider2D>().enabled = false;
             tmp.transform.parent = transform;
 
             if (maxNumOfItems == 1)
@@ -62,6 +63,7 @@ public class PlayerManager : MonoBehaviour
         currentNumOfItems--;
         item.transform.parent = item.GetComponent<FallingItemManager>().intitialParent;
         item.transform.localScale = item.GetComponent<FallingItemManager>().initialLocalScale;
+        item.GetComponent<BoxCollider2D>().enabled = true;
         item.GetComponent<BoxCollider2D>().isTrigger = false;
         item.transform.position = new Vector3(transform.position.x + PlayerController.IsFacingRight() * (0.01f + item.GetComponent<BoxCollider2D>().bounds.extents.x + GetComponent<BoxCollider2D>().bounds.extents.x), transform.position.y, 0);
         item.AddComponent<Rigidbody2D>();

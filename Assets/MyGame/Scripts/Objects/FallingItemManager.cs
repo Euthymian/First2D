@@ -37,6 +37,9 @@ public class FallingItemManager : MonoBehaviour
             {
                 if (Physics2D.BoxCast(GetComponent<BoxCollider2D>().bounds.center, GetComponent<BoxCollider2D>().bounds.size * 1.15f, 0, Vector2.zero, 0, ground))
                 {
+                    RaycastHit2D tmp = Physics2D.BoxCast(GetComponent<BoxCollider2D>().bounds.center, GetComponent<BoxCollider2D>().bounds.size * 1.15f, 0, Vector2.zero, 0, ground);
+                    //print(tmp.collider.gameObject);
+                    if (tmp.collider.tag == "MovingPlatform") transform.parent = tmp.collider.gameObject.transform;
                     Destroy(rb2D);
                     GetComponent<BoxCollider2D>().isTrigger = initialTriggerStatus;
                 }

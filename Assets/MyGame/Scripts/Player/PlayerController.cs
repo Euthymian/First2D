@@ -83,7 +83,6 @@ public class PlayerController : MonoBehaviour
 
     bool onMovingPlatform;
     public bool OnMovingPlatform { get => onMovingPlatform; set => onMovingPlatform = value; }
-    public float speedUpWhileOnMovingPlatform;
     private Rigidbody2D mpRb;
     #endregion
 
@@ -102,7 +101,7 @@ public class PlayerController : MonoBehaviour
         InputManager();
         SetGravityOnMovingPlatform();
         //Debug.Log(anim.GetCurrentAnimatorClipInfo(0)[0].clip.name);
-        print(rb.velocity.x);
+        //print(rb.velocity.x);
     }
 
     void InputManager()
@@ -274,7 +273,9 @@ public class PlayerController : MonoBehaviour
             Flip();
         }
 
-        anim.SetFloat("xSpeed", Mathf.Abs(Mathf.Round(rb.velocity.x)));
+        float localXSpeed = Mathf.Round(rb.velocity.x);
+        if (mpRb != null) localXSpeed = Mathf.Round(rb.velocity.x - mpRb.velocity.x);
+        anim.SetFloat("xSpeed", Mathf.Abs(localXSpeed));
     }
 
     void Flip()

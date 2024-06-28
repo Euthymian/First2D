@@ -9,8 +9,10 @@ public class MovingPlatform : MonoBehaviour
     private Rigidbody2D rb;
     [SerializeField] private float speed;
     float distanceForChangeDir = 0.1f;
-    //private SwitchButton sButton;
-    //private bool stopNow = false;
+    [SerializeField] private GameObject activateButton;
+    private bool stopNow = false;
+
+    // remove condition in FixedUpdate to disable effect of button
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -25,8 +27,14 @@ public class MovingPlatform : MonoBehaviour
 
     void Update()
     {
+        UpdateActivationStatus();
         //MovePlatform();
         UpdateNextNode();
+    }
+
+    void UpdateActivationStatus()
+    {
+        stopNow = activateButton.GetComponent<OnHoldButton>().Status;
     }
 
     void MovePlatform()
@@ -45,8 +53,8 @@ public class MovingPlatform : MonoBehaviour
 
     private void FixedUpdate()
     {
-        MovePlatformByRb();
-        //print(rb.velocity.x);
+        if (stopNow) rb.velocity = Vector2.zero;
+        else MovePlatformByRb();
     }
 
     void MovePlatformByRb()
@@ -63,16 +71,6 @@ public class MovingPlatform : MonoBehaviour
             {
                 collision.GetComponent<PlayerController>().OnMovingPlatform = true;
             }
-        }
-    }
-
-    private void OnTriggerStay2D(Collider2D collision)
-    {
-        if (collision.gameObject.CompareTag("Player"))
-        {
-            Rigidbody2D playerRb = collision.GetComponent<Rigidbody2D>();
-            //playerRb.velocity = playerRb.velocity + rb.velocity;
-            playerRb.velocity = new Vector2(10, playerRb.velocity.y);
         }
     }
 
