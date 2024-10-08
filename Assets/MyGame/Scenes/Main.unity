@@ -7110,6 +7110,7 @@ MonoBehaviour:
   jumpForce: 4.5
   holdJumpForce: 0.55
   maxUpTime: 0.15
+  avaiableJumps: 0
   jumpEffectPrefab: {fileID: 1249216197937953552, guid: 5202a4fac246ee142be418db8c79da0b, type: 3}
   doubleJumpEffectPrefab: {fileID: 3535831438033877489, guid: 14caeabfcc9d6bf44aa76b9ef1030129, type: 3}
   headCheck: {fileID: 1008564662}
@@ -11419,11 +11420,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6620268095622699901, guid: 07e2ea9b0e7441c46baaf108c7f641f7, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -5.03
+      value: -4.72
       objectReference: {fileID: 0}
     - target: {fileID: 6620268095622699901, guid: 07e2ea9b0e7441c46baaf108c7f641f7, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 6.93
+      value: 2.04
       objectReference: {fileID: 0}
     - target: {fileID: 7508052045513505365, guid: 07e2ea9b0e7441c46baaf108c7f641f7, type: 3}
       propertyPath: m_LocalPosition.x
@@ -11505,11 +11506,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7981765672681963389, guid: 2a9d1e1149a569e40ad0b60c50771795, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 16.58
+      value: 16.593
       objectReference: {fileID: 0}
     - target: {fileID: 7981765672681963389, guid: 2a9d1e1149a569e40ad0b60c50771795, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -1.83
+      value: -1.867
       objectReference: {fileID: 0}
     - target: {fileID: 9188302478490224012, guid: 2a9d1e1149a569e40ad0b60c50771795, type: 3}
       propertyPath: m_Name

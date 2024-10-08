@@ -25,6 +25,8 @@ public class JumpPad : MonoBehaviour
             pc.Fell = false;
             Rigidbody2D rb = pc.GetComponent<Rigidbody2D>();
             rb.velocity = new Vector2(rb.velocity.x, jumpPadSpeed);
+            // Reset multiple jump
+            pc.avaiableJumps = 1;
         }
     }
 }

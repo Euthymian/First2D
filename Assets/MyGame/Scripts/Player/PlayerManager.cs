@@ -6,11 +6,10 @@ using static UnityEditor.Progress;
 [AddComponentMenu("TuanThanh/PlayerManager")]
 public class PlayerManager : MonoBehaviour
 {
-    [SerializeField] LayerMask pickableItem;
+    [SerializeField] LayerMask pickableItem; // -> Normal Item
     [SerializeField] Transform pickUpPoint;
     int maxNumOfItems = 2;
     int currentNumOfItems = 0;
-    int startIndexOfPickUpItem = 4;
 
     void Start()
     {

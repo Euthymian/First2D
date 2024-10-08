@@ -37,7 +37,7 @@ public class PlayerController : MonoBehaviour
     private bool ableToMultipleJump = true;
     private bool isMultipleJumping = false;
     private int additionalNumOfJumps = 1; // Dont count first jump
-    private int avaiableJumps;
+    [HideInInspector] public int avaiableJumps;
     private float multipleJumpForce = 5.6f;
     private float coyoteJumpDelayTime = 0.2f;
     private bool ableToCoyoteJump = false;
@@ -494,7 +494,8 @@ public class PlayerController : MonoBehaviour
             //print(anim.GetFloat("ySpeed"));
             rb.gravityScale = 0;
         }
-        else rb.gravityScale = playerGravityScale;
+        else if (!isDashing) 
+            rb.gravityScale = playerGravityScale;
     }
 
     private void OnTriggerEnter2D(Collider2D collision)

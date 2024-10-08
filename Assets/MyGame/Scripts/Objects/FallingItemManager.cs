@@ -47,11 +47,6 @@ public class FallingItemManager : MonoBehaviour
         }
     }
 
-    private void OnTriggerEnter2D(Collider2D collision)
-    {
-        
-    }
-
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.red;
