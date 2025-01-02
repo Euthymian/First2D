@@ -36,7 +36,7 @@ public class PlayerController : MonoBehaviour
     private float currentUpTime;
     private bool ableToMultipleJump = true;
     private bool isMultipleJumping = false;
-    private int additionalNumOfJumps = 1; // Dont count first jump
+    private int additionalNumOfJumps = 1; // Exclude first jump
     [HideInInspector] public int avaiableJumps;
     private float multipleJumpForce = 5.6f;
     private float coyoteJumpDelayTime = 0.2f;
@@ -93,7 +93,7 @@ public class PlayerController : MonoBehaviour
         spriteCharacter = GetComponentInChildren<SpriteRenderer>();
         anim = GetComponentInChildren<Animator>();
         avaiableJumps = additionalNumOfJumps;
-        playerGravityScale = 2;
+        playerGravityScale = normalGravityScale;
     }
 
     void Update()
@@ -126,7 +126,7 @@ public class PlayerController : MonoBehaviour
         #endregion
 
         #region Jump
-        float localYVelocity = default;
+        float localYVelocity;
         if (mpRb != null) localYVelocity = 0;
         else localYVelocity = Mathf.Round(rb.velocity.y);
         if (!isJumping && Input.GetButtonDown("Jump") && isGrounded && localYVelocity <= 0) // There are some cases where char is inside ground (OWP) but velocity > 0 
@@ -155,6 +155,7 @@ public class PlayerController : MonoBehaviour
             avaiableJumps--;
             isMultipleJumping = true;
         }
+        // Hold to jump higher
         else if (avaiableJumps == additionalNumOfJumps && Input.GetButton("Jump") && Time.time - currentUpTime <= maxUpTime)
         {
             isUp = true;
@@ -225,7 +226,7 @@ public class PlayerController : MonoBehaviour
     {
         ResetAllTriggers();
         if (isDashing) return;
-        if (rb.bodyType == RigidbodyType2D.Dynamic)
+        if (rb.bodyType == RigidbodyType2D.Dynamic && !isDashing)
         {
             Crouch();
             Move();
@@ -254,9 +255,53 @@ public class PlayerController : MonoBehaviour
         if (nowFallThroughOWP) StartCoroutine(FallThroughOWPProcedure());
     }
 
+    private IEnumerator FallThroughOWPProcedure()
+    {
+        nowFallThroughOWP = false;
+        BoxCollider2D platformCollider = currentOWP.GetComponent<BoxCollider2D>();
+
+        Physics2D.IgnoreCollision(bodyCollider, platformCollider);
+        anim.SetTrigger("Falling");
+        yield return new WaitForSeconds(timeForFallThroughOWP);
+        Physics2D.IgnoreCollision(bodyCollider, platformCollider, false);
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.gameObject.layer == 9) // 9 means OneWayPlatform
+        {
+            currentOWP = collision.gameObject;
+        }
+    }
+
+    private void OnCollisionExit2D(Collision2D collision)
+    {
+        if (collision.gameObject.layer == 9)
+        {
+            currentOWP = null;
+        }
+    }
+
     void Dash()
     {
         if (nowDash) StartCoroutine(DashProcedure());
+    }
+
+    IEnumerator DashProcedure()
+    {
+        nowDash = false;
+        canDash = false;
+        isDashing = true;
+        float originalGravity = rb.gravityScale;
+        rb.gravityScale = 0f;
+        rb.velocity = new Vector2(dashSpeed * IsFacingRight(), 0f);
+        dashTrail.emitting = true;
+        yield return new WaitForSeconds(dashTime);
+        dashTrail.emitting = false;
+        rb.gravityScale = originalGravity;
+        isDashing = false;
+        yield return new WaitForSeconds(dashDelayTime);
+        canDash = true;
     }
 
     void Move()
@@ -404,6 +449,9 @@ public class PlayerController : MonoBehaviour
 
     void CastSpell()
     {
+        // This means when the CastSpell animation ends, isCastingSpell will turn false
+        // isCastingSpell is optional becuase i can directly call CastSpell() in get input function but
+        // i want to manage every action CharacterMotionManager -> use isCastingSpell
         if (anim.GetCurrentAnimatorClipInfo(0)[0].clip.name == "Spell") isCastingSpell = true;
         else isCastingSpell = false;
 
@@ -436,49 +484,6 @@ public class PlayerController : MonoBehaviour
     //    Gizmos.DrawWireSphere(wallCheck.position, 0.05f);
     //}
 
-    IEnumerator DashProcedure()
-    {
-        nowDash = false;
-        canDash = false;
-        isDashing = true;
-        float originalGravity = rb.gravityScale;
-        rb.gravityScale = 0f;
-        rb.velocity = new Vector2(dashSpeed * IsFacingRight(), 0f);
-        dashTrail.emitting = true;
-        yield return new WaitForSeconds(dashTime);
-        dashTrail.emitting = false;
-        rb.gravityScale = originalGravity;
-        isDashing = false;
-        yield return new WaitForSeconds(dashDelayTime);
-        canDash = true;
-    }
-
-    private IEnumerator FallThroughOWPProcedure()
-    {
-        nowFallThroughOWP = false;
-        BoxCollider2D platformCollider = currentOWP.GetComponent<BoxCollider2D>();
-
-        Physics2D.IgnoreCollision(bodyCollider, platformCollider);
-        anim.SetTrigger("Falling");
-        yield return new WaitForSeconds(timeForFallThroughOWP);
-        Physics2D.IgnoreCollision(bodyCollider, platformCollider, false);
-    }
-
-    private void OnCollisionEnter2D(Collision2D collision)
-    {
-        if (collision.gameObject.layer == 9) // 9 means OneWayPlatform
-        {
-            currentOWP = collision.gameObject;
-        }
-    }
-
-    private void OnCollisionExit2D(Collision2D collision)
-    {
-        if (collision.gameObject.layer == 9)
-        {
-            currentOWP = null;
-        }
-    }
 
     void InsideLadderCheck()
     {
